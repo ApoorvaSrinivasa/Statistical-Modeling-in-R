@@ -1,0 +1,71 @@
+---
+title: "STAT 420 - Final Project Proposal - Group 29 "
+date: ''
+output:
+  html_document: 
+    toc: yes
+  pdf_document: default
+urlcolor: cyan
+---
+
+
+
+## Group Introduction
+
+This study will be conducted by the following individuals:
+
+ - Apoorva H Srinivasa (NetID: **apoorva6**)
+ - Madhukar K P (NetID: **mk30**)
+ - Nicholas Reinicke (NetID: **ndr3**)
+ - Raymond Ordona (NetID: **rordona2**)
+
+***
+
+## Title
+
+As part of this project we intend to study the factors in brewing process that affect the alcohol content in craft beers and also make best predictions on the alcohol content based on the affecting factors. Our final project will be submitted under the title,
+
+<center><font size="4" color="#002060">**Statistical study of Alcohol By Volume (ABV) in Craft Beer**</font></center>
+
+***
+
+## Dataset
+
+For this project we will be utilizing a dataset ([`recipeData.csv`](recipeData.csv)) that contains information on approximately 75,000 different recipies of craft beer along with the readings of various sensors captured during the brewing process. The raw data was sourced from [Brewer's Friend Beer Recipes](https://www.kaggle.com/jtrofe/beer-recipes) available under Kaggle platform.
+
+The dataset has 23 attributes. The response variable - `ABV` is a *real* variable. Below are some of the initial key attributes (predictors) that we would be using in our study,
+
+| Attribute     | Domain      | Description                                                                    |
+|---------------|-------------|--------------------------------------------------------------------------------|
+| `SugarScale`  | Categorical | Scale to determine the concentration of dissolved solids in wort |
+| `BrewMethod`  | Categorical | Various techniques for brewing (Ex: All Grain) |
+| `BoilTime`    | Real        | Time wort is boiled |
+| `BoilGravity` | Real        | Specific gravity of wort before the boil |
+| `Color`       | Real        | Color using Reference Method - light to dark ex. 40 = black |
+| `Efficiency`  | Real        | Beer mash extraction efficiency - extracting sugars from the grain during mash |
+| `OGSpecific`  | Real        | Specific gravity of wort before fermentation |
+| `FGSpecific`  | Real        | Specific gravity of wort after fermentation |
+
+***
+
+## Brief Statement on interest
+
+There are many brew enthusiasts who like to brew beer at home. To make a good beer or to improve a receipe over many tries it is essential to capture several readings during and after the brewing process which requires one to buy costly sensors or measuring gadgets. Through this study we would like to check if we can eliminate any sensors or measuring gadgets. Particularly we intend to analyze and see if we can make predictions of one of the parameters namely - ABV - from other readings and do away with any measuring gadgets for it.
+
+***
+
+## Data Load - Preliminary Check
+
+Below `R` blocks result is an evidence that data can be loaded into `R`. Also printed are the first few values of the response variable **ABV**.
+
+```{r}
+# read csv file
+beer_data_raw = read.csv("recipeData.csv")
+beer_data_dim = c("Row Count" = dim(beer_data_raw)[1], "Column Count" = dim(beer_data_raw)[2])
+beer_data_dim
+
+# view first few values of the response variable - ABV
+beer_data_raw[1:10, "ABV"]
+```
+
+***

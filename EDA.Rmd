@@ -1,0 +1,228 @@
+---
+title: "EDA"
+author: "Apoorva"
+date: "7/31/2018"
+output: html_document
+---
+
+#Data Prep
+```{r}
+beer = read.csv('recipeData.csv')
+beer$Style = as.factor(beer$Style)
+
+
+coln = c('OG', 'FG', 'ABV', 'IBU', 'Color', 'Efficiency',
+         'BoilGravity',  'BoilTime', 'SugarScale', 'BrewMethod')
+
+
+dataset = subset( beer[, coln], !BoilGravity %in% c("NA","N/A" ) & !ABV %in% c("NA","N/A"))
+dataset[, c("BoilGravity")] = as.numeric(dataset[, c("BoilGravity")])
+
+
+set.seed(142)
+n = nrow(dataset)
+ind = sample(1:nrow(dataset), n * 9/10, replace = FALSE, prob = NULL)
+
+train_set = dataset[ind,]
+test_set = dataset[-ind,]
+
+#Function for plotting assumptions
+assumption_plots <- function(model)
+{
+  par(mfrow=c(1,2))
+  plot(fitted(model), resid(model), col = "grey", pch = 20,
+       xlab = "Fitted", ylab = "Residuals", main = "Data from Model 1")
+  abline(h = 0, col = "darkorange", lwd = 2)
+  #Q-Q plot 
+  qqnorm(resid(model), main = "Normal Q-Q Plo", col = "darkgrey")
+  qqline(resid(model), col = "dodgerblue", lwd = 2)
+}
+  result_metrics = function(model, alpha) {
+    # Get R2  
+    model_r2 =  summary(model)$r.squared
+    # Get Adjusted R2
+    model_adj_r2 =  summary(model)$adj.r.squared
+    # Get RMSE
+    model_rmse =  sqrt(mean(resid(model)^2))
+    # Get number of coefficients that are significant at .1
+    coef = summary(model)$coefficients
+    model_coef_cnt = nrow(coef) - 1
+    model_not_signif_coef = names( which( coef[,"Pr(>|t|)"] > alpha ) )
+    model_not_sigif_coef_cnt = length(model_not_signif_coef)
+    list( "r2" = model_r2,
+          "adjusted_r2" = model_adj_r2,
+          "rmse" = model_rmse,
+          "coef_count" = model_coef_cnt,
+          "not_sig_coef_count" = model_not_sigif_coef_cnt,
+          "not_sig_coef" = model_not_signif_coef )
+  }
+
+  ifelse(train_set$SugarScale == "Specific Gravity", train_set$OG, train_set$OG <-  1 + ((train_set$OG)/ (258.6 - ((227.1*train_set$OG)/258.2))))
+ifelse(train_set$SugarScale == "Specific Gravity", train_set$FG, train_set$FG <-  1 + ((train_set$FG)/ (258.6 - ((227.1*train_set$FG)/258.2))))
+
+       
+ifelse(test_set$SugarScale == "Specific Gravity", test_set$OG, test_set$OG <-  1 + ((test_set$OG)/ (258.6 - ((227.1*test_set$OG)/258.2))))
+ifelse(test_set$SugarScale == "Specific Gravity", test_set$FG, test_set$FG <-  1 + ((test_set$FG)/ (258.6 - ((227.1*test_set$FG)/258.2))))
+
+
+```
+
+#train dataset EDA
+```{r}
+#Complete data
+initial_final <-(train_set$OG-train_set$FG)
+plot(initial_final,train_set$ABV,xlab="OG-FG")
+
+
+model_no_sub <- lm(ABV ~ ( (OG-FG)/FG +OG+SugarScale )^2, data=train_set )
+result_metrics(model_no_sub, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_no_sub)
+```
+
+######We will now try to subset the train dataset with only plato in them
+```{r}
+
+train_set_new <- subset(train_set,train_set$SugarScale== "Plato"  )
+
+## Subsetting model
+model_sub <- lm(ABV ~ OG-FG, data= train_set_new)
+result_metrics(model_sub, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_sub)
+```
+
+#Remove outliers
+```{r}
+outlier_rem <- subset(train_set_new, abs(rstandard(model_sub)) < 2)
+
+#Repeating above steps after outlier removal
+## Subsetting model
+model_out <- lm(ABV ~ OG-FG, data= outlier_rem)
+result_metrics(model_out, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_out)
+```
+
+
+#Finding correlation between numerical variables
+```{r}
+round(cor(outlier_rem[1:8]),2)
+#pairs(outlier_rem)
+```
+
+#Adding other parameters to our model
+##Study 1
+```{r}
+model_1 <- lm(ABV ~ OG+IBU+Color+BoilGravity, data=outlier_rem)
+result_metrics(model_1, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_1)
+car::vif(model_1)
+```
+
+##Study 2
+```{r}
+model_2 <- lm(ABV ~ (OG +IBU+Color+BoilGravity+BoilTime+BrewMethod)^2 -OG:BoilGravity  , data=outlier_rem)
+result_metrics(model_2, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_1)
+car::vif(model_2)
+```
+
+##Study 3
+```{r}
+#Backward AIC
+back_Aic <- step( model_2, direction = "backward", trace=0) 
+result_metrics(back_Aic, alpha=0.10)
+  #Checking assumptions
+assumption_plots(back_Aic)
+car::vif(model_2)
+```
+
+#Validating our model with test
+```{r}
+actual_abv = outlier_rem$ABV
+predicted_interval = predict(model_2, outlier_rem, interval="prediction", level=0.01)
+predicted_abv = predicted_interval[,"fit"]
+(rmse = sqrt(mean((predicted_abv - actual_abv)^2)))
+#Actual Vs Predicted
+plot(predicted_abv, actual_abv, col="dodgerblue", ylab="Actual", 
+     xlab="Predicted", main="Actual vs Predicted for Test Data")
+abline(0,1, col="darkorange", lwd=2)
+```
+
+
+
+
+***
+
+
+#########We will now try to subset the train dataset with only plato in them
+```{r}
+
+train_set_new <- subset(train_set,train_set$SugarScale == "Specific Gravity"  )
+
+## Subsetting model
+model_sub <- lm(ABV ~ OG-FG, data= train_set_new)
+result_metrics(model_sub, alpha=0.10)
+
+#Remove outliers
+outlier_rem <- subset(train_set_new, abs(rstandard(model_sub)) < 2)
+
+#Repeating above steps after outlier removal
+## Subsetting model
+model_out <- lm(ABV ~ OG-FG, data= outlier_rem)
+result_metrics(model_out, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_out)
+```
+
+
+#Finding correlation between numerical variables
+```{r}
+round(cor(outlier_rem[1:8]),2)
+#pairs(outlier_rem)
+```
+
+#Adding other parameters to our model
+##Study 1
+```{r}
+model_1 <- lm(ABV ~ OG+IBU+Color+BoilGravity, data=outlier_rem)
+result_metrics(model_1, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_1)
+car::vif(model_1)
+```
+
+##Study 2
+```{r}
+model_2 <- lm(ABV ~ (OG +IBU+Color+BoilGravity+BoilTime+BrewMethod)^2 -OG:BoilGravity  , data=outlier_rem)
+result_metrics(model_2, alpha=0.10)
+#Checking assumptions
+assumption_plots(model_1)
+car::vif(model_2)
+```
+
+##Study 3
+```{r}
+#Backward AIC
+back_Aic <- step( model_2, direction = "backward", trace=0) 
+result_metrics(back_Aic, alpha=0.10)
+  #Checking assumptions
+assumption_plots(back_Aic)
+car::vif(model_2)
+```
+
+#Validating our model with test
+```{r}
+actual_abv = outlier_rem$ABV
+predicted_interval = predict(model_2, outlier_rem, interval="prediction", level=0.01)
+predicted_abv = predicted_interval[,"fit"]
+(rmse = sqrt(mean((predicted_abv - actual_abv)^2)))
+#Actual Vs Predicted
+plot(predicted_abv, actual_abv, col="dodgerblue", ylab="Actual", 
+     xlab="Predicted", main="Actual vs Predicted for Test Data")
+abline(0,1, col="darkorange", lwd=2)
+```
+
