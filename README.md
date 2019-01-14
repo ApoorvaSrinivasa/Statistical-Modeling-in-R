@@ -17,3 +17,15 @@ and BIC
 search using AIC and BIC
 3) For each model capture the metrics defined in next sub-section on train and test data.
 4) We’ll then pick the best model based on metrics and further tune or diagnose it for leverages, outliers and influencial observations.
+
+## Metrics:
+Below are the metrics that are captured for each of the models that we fit. Argument to pick the best model will be made based on some
+or all of these metrics.
+RMSE on train data
+RMSE on test data
+LOOCV.RMSE
+R-squared
+Adj-R-squared
+Average percent error on train data
+Average percent error on test data
+Time taken to search the best model (in minutes)
